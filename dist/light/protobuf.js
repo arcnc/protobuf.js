@@ -1,6 +1,6 @@
 /*!
  * protobuf.js v6.8.8 (c) 2016, daniel wirtz
- * compiled mon, 21 oct 2019 15:32:07 utc
+ * compiled wed, 01 oct 2025 06:59:12 utc
  * licensed under the bsd-3-clause license
  * see: https://github.com/dcodeio/protobuf.js for details
  */
@@ -2305,12 +2305,12 @@ protobuf.configure    = configure;
  * @returns {undefined}
  */
 function configure() {
-    protobuf.Reader._configure(protobuf.BufferReader);
     protobuf.util._configure();
+    protobuf.Writer._configure(protobuf.BufferWriter);
+    protobuf.Reader._configure(protobuf.BufferReader);
 }
 
 // Set up buffer utility according to the environment
-protobuf.Writer._configure(protobuf.BufferWriter);
 configure();
 
 },{"24":24,"25":25,"27":27,"28":28,"35":35,"38":38,"39":39}],18:[function(require,module,exports){
@@ -3632,6 +3632,20 @@ var create_array = typeof Uint8Array !== "undefined"
         throw Error("illegal buffer");
     };
 
+var create = function create() {
+    return util.Buffer
+        ? function create_buffer_setup(buffer) {
+            return (Reader.create = function create_buffer(buffer) {
+                return util.Buffer.isBuffer(buffer)
+                    ? new BufferReader(buffer)
+                    /* istanbul ignore next */
+                    : create_array(buffer);
+            })(buffer);
+        }
+        /* istanbul ignore next */
+        : create_array;
+};
+
 /**
  * Creates a new reader using the specified buffer.
  * @function
@@ -3639,17 +3653,7 @@ var create_array = typeof Uint8Array !== "undefined"
  * @returns {Reader|BufferReader} A {@link BufferReader} if `buffer` is a Buffer, otherwise a {@link Reader}
  * @throws {Error} If `buffer` is not a valid buffer
  */
-Reader.create = util.Buffer
-    ? function create_buffer_setup(buffer) {
-        return (Reader.create = function create_buffer(buffer) {
-            return util.Buffer.isBuffer(buffer)
-                ? new BufferReader(buffer)
-                /* istanbul ignore next */
-                : create_array(buffer);
-        })(buffer);
-    }
-    /* istanbul ignore next */
-    : create_array;
+Reader.create = create();
 
 Reader.prototype._slice = util.Array.prototype.subarray || /* istanbul ignore next */ util.Array.prototype.slice;
 
@@ -3956,6 +3960,8 @@ Reader.prototype.skipType = function(wireType) {
 
 Reader._configure = function(BufferReader_) {
     BufferReader = BufferReader_;
+    Reader.create = create();
+    BufferReader._configure();
 
     var fn = util.Long ? "toLong" : /* istanbul ignore next */ "toNumber";
     util.merge(Reader.prototype, {
@@ -4010,16 +4016,21 @@ function BufferReader(buffer) {
      */
 }
 
-/* istanbul ignore else */
-if (util.Buffer)
-    BufferReader.prototype._slice = util.Buffer.prototype.slice;
+BufferReader._configure = function () {
+    /* istanbul ignore else */
+    if (util.Buffer)
+        BufferReader.prototype._slice = util.Buffer.prototype.slice;
+};
+
 
 /**
  * @override
  */
 BufferReader.prototype.string = function read_string_buffer() {
     var len = this.uint32(); // modifies pos
-    return this.buf.utf8Slice(this.pos, this.pos = Math.min(this.pos + len, this.len));
+    return this.buf.utf8Slice
+        ? this.buf.utf8Slice(this.pos, this.pos = Math.min(this.pos + len, this.len))
+        : this.buf.toString('utf-8', this.pos, this.pos = Math.min(this.pos + len, this.len))
 };
 
 /**
@@ -4028,6 +4039,8 @@ BufferReader.prototype.string = function read_string_buffer() {
  * @function
  * @returns {Buffer} Value read
  */
+
+BufferReader._configure();
 
 },{"24":24,"35":35}],26:[function(require,module,exports){
 "use strict";
@@ -4820,6 +4833,12 @@ function Type(name, options) {
     this.group = undefined; // toJSON
 
     /**
+     * The name of the file containing this message.
+     * @type {string}
+     */
+    this.filename = undefined; // toJSON
+
+    /**
      * Cached fields by id.
      * @type {Object.<number,Field>|null}
      * @private
@@ -5042,6 +5061,7 @@ Type.prototype.toJSON = function toJSON(toJSONOptions) {
     var inherited = Namespace.prototype.toJSON.call(this, toJSONOptions);
     var keepComments = toJSONOptions ? Boolean(toJSONOptions.keepComments) : false;
     return util.toObject([
+        "filename"   , this.filename,
         "options"    , inherited && inherited.options || undefined,
         "oneofs"     , Namespace.arrayToJSON(this.oneofsArray, toJSONOptions),
         "fields"     , Namespace.arrayToJSON(this.fieldsArray.filter(function(obj) { return !obj.declaringField; }), toJSONOptions) || {},
@@ -6793,21 +6813,25 @@ function Writer() {
     // part is just a linked list walk calling operations with already prepared values.
 }
 
+var create = function create() {
+    return util.Buffer
+        ? function create_buffer_setup() {
+            return (Writer.create = function create_buffer() {
+                return new BufferWriter();
+            })();
+        }
+        /* istanbul ignore next */
+        : function create_array() {
+            return new Writer();
+        };
+};
+
 /**
  * Creates a new writer.
  * @function
  * @returns {BufferWriter|Writer} A {@link BufferWriter} when Buffers are supported, otherwise a {@link Writer}
  */
-Writer.create = util.Buffer
-    ? function create_buffer_setup() {
-        return (Writer.create = function create_buffer() {
-            return new BufferWriter();
-        })();
-    }
-    /* istanbul ignore next */
-    : function create_array() {
-        return new Writer();
-    };
+Writer.create = create();
 
 /**
  * Allocates a buffer of the specified size.
@@ -7128,6 +7152,8 @@ Writer.prototype.finish = function finish() {
 
 Writer._configure = function(BufferWriter_) {
     BufferWriter = BufferWriter_;
+    Writer.create = create();
+    BufferWriter._configure();
 };
 
 },{"35":35}],39:[function(require,module,exports){
@@ -7140,8 +7166,6 @@ var Writer = require(38);
 
 var util = require(35);
 
-var Buffer = util.Buffer;
-
 /**
  * Constructs a new buffer writer instance.
  * @classdesc Wire format writer using node buffers.
@@ -7152,27 +7176,28 @@ function BufferWriter() {
     Writer.call(this);
 }
 
-/**
- * Allocates a buffer of the specified size.
- * @param {number} size Buffer size
- * @returns {Buffer} Buffer
- */
-BufferWriter.alloc = function alloc_buffer(size) {
-    return (BufferWriter.alloc = util._Buffer_allocUnsafe)(size);
+BufferWriter._configure = function () {
+    /**
+     * Allocates a buffer of the specified size.
+     * @param {number} size Buffer size
+     * @returns {Buffer} Buffer
+     */
+    BufferWriter.alloc = util._Buffer_allocUnsafe;
+
+    BufferWriter.writeBytesBuffer = util.Buffer && util.Buffer.prototype instanceof Uint8Array && util.Buffer.prototype.set.name === "set"
+        ? function writeBytesBuffer_set(val, buf, pos) {
+          buf.set(val, pos); // faster than copy (requires node >= 4 where Buffers extend Uint8Array and set is properly inherited)
+          // also works for plain array values
+        }
+        /* istanbul ignore next */
+        : function writeBytesBuffer_copy(val, buf, pos) {
+          if (val.copy) // Buffer values
+            val.copy(buf, pos, 0, val.length);
+          else for (var i = 0; i < val.length;) // plain array values
+            buf[pos++] = val[i++];
+        };
 };
 
-var writeBytesBuffer = Buffer && Buffer.prototype instanceof Uint8Array && Buffer.prototype.set.name === "set"
-    ? function writeBytesBuffer_set(val, buf, pos) {
-        buf.set(val, pos); // faster than copy (requires node >= 4 where Buffers extend Uint8Array and set is properly inherited)
-                           // also works for plain array values
-    }
-    /* istanbul ignore next */
-    : function writeBytesBuffer_copy(val, buf, pos) {
-        if (val.copy) // Buffer values
-            val.copy(buf, pos, 0, val.length);
-        else for (var i = 0; i < val.length;) // plain array values
-            buf[pos++] = val[i++];
-    };
 
 /**
  * @override
@@ -7183,7 +7208,7 @@ BufferWriter.prototype.bytes = function write_bytes_buffer(value) {
     var len = value.length >>> 0;
     this.uint32(len);
     if (len)
-        this._push(writeBytesBuffer, len, value);
+        this._push(BufferWriter.writeBytesBuffer, len, value);
     return this;
 };
 
@@ -7191,14 +7216,14 @@ function writeStringBuffer(val, buf, pos) {
     if (val.length < 40) // plain js is faster for short strings (probably due to redundant assertions)
         util.utf8.write(val, buf, pos);
     else
-        buf.utf8Write(val, pos);
+        buf.utf8Write ? buf.utf8Write(val, pos) : buf.write(val, pos);
 }
 
 /**
  * @override
  */
 BufferWriter.prototype.string = function write_string_buffer(value) {
-    var len = Buffer.byteLength(value);
+    var len = util.Buffer.byteLength(value);
     this.uint32(len);
     if (len)
         this._push(writeStringBuffer, len, value);
@@ -7212,6 +7237,8 @@ BufferWriter.prototype.string = function write_string_buffer(value) {
  * @function
  * @returns {Buffer} Finished buffer
  */
+
+BufferWriter._configure();
 
 },{"35":35,"38":38}]},{},[16])
 
