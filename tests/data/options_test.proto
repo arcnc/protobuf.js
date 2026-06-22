@@ -51,6 +51,7 @@ extend google.protobuf.FieldOptions {
 extend google.protobuf.MessageOptions {
     repeated Msg mo_rep_msg = 50002;
     Msg mo_single_msg = 50003;
+    Msg mo_array_msg = 50004;
 }
 
 extend google.protobuf.MethodOptions {
@@ -61,6 +62,7 @@ extend google.protobuf.MethodOptions {
 message TestFieldOptionsMsg {
     string field1 = 1 [(fo_rep_msg) = {value: 1 rep_value: 2 rep_value: 3}, (fo_rep_msg) = {value: 4 rep_value: 5 rep_value: 6}];
     string field2 = 2 [(fo_single_msg).value = 7, (fo_single_msg).rep_value = 8, (fo_single_msg).rep_value = 9];
+    string field3 = 3 [(fo_single_msg) = {rep_value: [10, 11] rep_nested: [{value: "arr1"}, {value: "arr2"}]}];
 }
 
 message TestMessageOptionsMsg {
@@ -109,6 +111,16 @@ message TestMessageOptionsNested {
     option (mo_single_msg).nested.value = "x";
     option (mo_single_msg).rep_nested = {value : "x" nested {nested{value: "y"}}};
     option (mo_single_msg).rep_nested = {value : "y"};
+}
+
+message TestMessageOptionsArray {
+    option (mo_array_msg) = {
+        rep_value: [10, 11]
+        rep_nested: [
+            { value: "x" },
+            { value: "y" }
+        ]
+    };
 }
 
 service TestOptionsService {

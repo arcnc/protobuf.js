@@ -1700,6 +1700,9 @@ export interface IType extends INamespace {
 
     /** Whether a legacy group or not */
     group?: boolean;
+
+    /** Defining file name */
+    filename?: string;
 }
 
 /** Conversion options as used by {@link Type#toObject} and {@link Message.toObject}. */

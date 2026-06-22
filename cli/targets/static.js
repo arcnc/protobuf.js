@@ -11,7 +11,8 @@ var Type      = protobuf.Type,
     Service   = protobuf.Service,
     Enum      = protobuf.Enum,
     Namespace = protobuf.Namespace,
-    util      = protobuf.util;
+    util      = protobuf.util,
+    wrappers  = protobuf.wrappers;
 
 var out = [];
 var indent = 0;
@@ -224,8 +225,12 @@ var renameVars = {
 };
 
 function buildFunction(type, functionName, gen, scope) {
-    var code = gen.toString(functionName)
-        .replace(/((?!\.)types\[\d+])(\.values)/g, "$1"); // enums: use types[N] instead of reflected types[N].values
+    var fullName = "." + exportName(type),
+        wrapper  = wrappers[fullName],
+        code     = wrapper && wrapper[functionName]
+                 ? wrapper[functionName].toString()
+                 : gen.toString(functionName)
+                    .replace(/((?!\.)types\[\d+])(\.values)/g, "$1"); // enums: use types[N] instead of reflected types[N].values
 
     var ast = espree.parse(code);
     /* eslint-disable no-extra-parens */

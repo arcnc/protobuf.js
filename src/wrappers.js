@@ -8,6 +8,7 @@
 var wrappers = exports;
 
 var Message = require("./message");
+var $root;
 
 /**
  * From object converter part of an {@link IWrapper}.
@@ -96,6 +97,85 @@ wrappers[".google.protobuf.Any"] = {
             object["@type"] = name;
             return object;
         }
+
+        return this.toObject(message, options);
+    }
+};
+
+// Custom wrapper for Timestamp.
+//
+// Implements the JSON serialization / deserialization as specified by
+// the proto specification.
+wrappers[".google.protobuf.Timestamp"] = {
+
+    fromObject: function fromObject(object) {
+        if (typeof object !== "string") {
+            // The static target inlines wrapper functions, where $root/$util
+            // are generated aliases. In reflection mode $root is undefined.
+            /* eslint-disable no-undef */
+            if ($root) {
+                if (object instanceof $root.google.protobuf.Timestamp)
+                    return object;
+                var message = new $root.google.protobuf.Timestamp();
+                if (object.seconds != null)
+                    if ($util.Long)
+                        (message.seconds = $util.Long.fromValue(object.seconds)).unsigned = false;
+                    else if (typeof object.seconds === "string")
+                        message.seconds = parseInt(object.seconds, 10);
+                    else if (typeof object.seconds === "number")
+                        message.seconds = object.seconds;
+                    else if (typeof object.seconds === "object")
+                        message.seconds = new $util.LongBits(object.seconds.low >>> 0, object.seconds.high >>> 0).toNumber();
+                if (object.nanos != null)
+                    message.nanos = object.nanos | 0;
+                return message;
+            }
+            /* eslint-enable no-undef */
+
+            return this.fromObject(object);
+        }
+
+        var millis = Date.parse(object);
+        if (isNaN(millis))
+            return this.fromObject(object);
+
+        return this.create({
+            seconds: Math.floor(millis / 1000),
+            nanos: millis % 1000 * 1000000
+        });
+    },
+
+    toObject: function toObject(message, options) {
+        if (options && options.json)
+            return new Date(message.seconds * 1000 + message.nanos / 1000000).toISOString();
+
+        /* eslint-disable no-undef */
+        if ($root) {
+            if (!options)
+                options = {};
+            var object = {};
+            if (options.defaults) {
+                if ($util.Long) {
+                    var zero = new $util.Long(0, 0, false);
+                    object.seconds = options.longs === String ? zero.toString() : options.longs === Number ? zero.toNumber() : zero;
+                } else
+                    object.seconds = options.longs === String ? "0" : 0;
+                object.nanos = 0;
+            }
+            if (message.seconds != null && Object.prototype.hasOwnProperty.call(message, "seconds"))
+                if (typeof message.seconds === "number")
+                    object.seconds = options.longs === String ? String(message.seconds) : message.seconds;
+                else
+                    object.seconds = options.longs === String
+                        ? $util.Long.prototype.toString.call(message.seconds)
+                        : options.longs === Number
+                        ? new $util.LongBits(message.seconds.low >>> 0, message.seconds.high >>> 0).toNumber()
+                        : message.seconds;
+            if (message.nanos != null && Object.prototype.hasOwnProperty.call(message, "nanos"))
+                object.nanos = message.nanos;
+            return object;
+        }
+        /* eslint-enable no-undef */
 
         return this.toObject(message, options);
     }

@@ -15,7 +15,7 @@ tape.test("pbjs generates static code", function(test) {
     // Alter the require cache to make the cli/targets/static work since it requires "protobufjs"
     // and we don't want to mess with "npm link"
     var savedResolveFilename = Module._resolveFilename;
-    Module._resolveFilename = function(request, parent) { 
+    Module._resolveFilename = function(request, parent) {
       if (request.startsWith("protobufjs")) {
         return request;
       }
@@ -44,8 +44,10 @@ tape.test("pbjs generates static code", function(test) {
 
         var OneofContainer = protobuf.roots.default.OneofContainer;
         var Message = protobuf.roots.default.Message;
+        var Timestamp = protobuf.roots.default.google.protobuf.Timestamp;
         test.ok(OneofContainer, "type is loaded");
         test.ok(Message, "type is loaded");
+        test.ok(Timestamp, "common type is loaded");
 
         // Check that fromObject and toObject work for plain object
         var obj = {
@@ -57,6 +59,13 @@ tape.test("pbjs generates static code", function(test) {
         var obj1 = OneofContainer.toObject(OneofContainer.fromObject(obj));
         test.deepEqual(obj, obj1, "fromObject and toObject work for plain object");
 
+        var timestamp = Timestamp.fromObject("1970-01-01T00:00:05.001Z");
+        test.equal(Timestamp.toObject(timestamp, { json: true }), "1970-01-01T00:00:05.001Z", "static Timestamp converts to JSON string");
+        test.same(Timestamp.toObject(timestamp), {
+            seconds: 5,
+            nanos: 1000000
+        }, "static Timestamp preserves object conversion");
+
         // Check that dynamic fromObject and toObject work for static instance
         var root = protobuf.loadSync("tests/data/cli/test.proto");
         var OneofContainerDynamic = root.lookup("OneofContainer");
@@ -66,7 +75,7 @@ tape.test("pbjs generates static code", function(test) {
         instance.regularField = "abc";
         var instance1 = OneofContainerDynamic.toObject(OneofContainerDynamic.fromObject(instance));
         test.deepEqual(instance, instance1, "fromObject and toObject work for instance of the static type");
-        
+
         test.end();
     });
 

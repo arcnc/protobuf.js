@@ -35,6 +35,8 @@ exports.requireAll = function requireAll(dirname) {
     var files = fs.readdirSync(dirname).sort(basenameCompare),
         all = {};
     files.forEach(function(file) {
+        if (file.charAt(0) === "." && file.charAt(1) === "_")
+            return;
         var basename = path.basename(file, ".js"),
             extname  = path.extname(file);
         if (extname === ".js")

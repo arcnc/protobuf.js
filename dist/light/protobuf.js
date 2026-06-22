@@ -1,6 +1,6 @@
 /*!
  * protobuf.js v6.11.6 (c) 2016, daniel wirtz
- * compiled sun, 03 may 2026 19:29:29 utc
+ * compiled mon, 22 jun 2026 09:16:31 utc
  * licensed under the bsd-3-clause license
  * see: https://github.com/dcodeio/protobuf.js for details
  */
@@ -5086,6 +5086,7 @@ function clearCache(type) {
  * @property {number[][]} [extensions] Extension ranges
  * @property {number[][]} [reserved] Reserved ranges
  * @property {boolean} [group=false] Whether a legacy group or not
+ * @property {string} [filename] Defining file name
  */
 
 /**
@@ -5098,6 +5099,7 @@ Type.fromJSON = function fromJSON(name, json) {
     var type = new Type(name, json.options);
     type.extensions = json.extensions;
     type.reserved = json.reserved;
+    type.filename = json.filename || null;
     var names = Object.keys(json.fields),
         i = 0;
     for (; i < names.length; ++i)
@@ -5144,6 +5146,7 @@ Type.prototype.toJSON = function toJSON(toJSONOptions) {
     var inherited = Namespace.prototype.toJSON.call(this, toJSONOptions);
     var keepComments = toJSONOptions ? Boolean(toJSONOptions.keepComments) : false;
     return util.toObject([
+        "filename"   , this.filename || undefined,
         "options"    , inherited && inherited.options || undefined,
         "oneofs"     , Namespace.arrayToJSON(this.oneofsArray, toJSONOptions),
         "fields"     , Namespace.arrayToJSON(this.fieldsArray.filter(function(obj) { return !obj.declaringField; }), toJSONOptions) || {},
@@ -6674,6 +6677,7 @@ function verifier(mtype) {
 var wrappers = exports;
 
 var Message = require(19);
+var $root;
 
 /**
  * From object converter part of an {@link IWrapper}.
@@ -6762,6 +6766,85 @@ wrappers[".google.protobuf.Any"] = {
             object["@type"] = name;
             return object;
         }
+
+        return this.toObject(message, options);
+    }
+};
+
+// Custom wrapper for Timestamp.
+//
+// Implements the JSON serialization / deserialization as specified by
+// the proto specification.
+wrappers[".google.protobuf.Timestamp"] = {
+
+    fromObject: function fromObject(object) {
+        if (typeof object !== "string") {
+            // The static target inlines wrapper functions, where $root/$util
+            // are generated aliases. In reflection mode $root is undefined.
+            /* eslint-disable no-undef */
+            if ($root) {
+                if (object instanceof $root.google.protobuf.Timestamp)
+                    return object;
+                var message = new $root.google.protobuf.Timestamp();
+                if (object.seconds != null)
+                    if ($util.Long)
+                        (message.seconds = $util.Long.fromValue(object.seconds)).unsigned = false;
+                    else if (typeof object.seconds === "string")
+                        message.seconds = parseInt(object.seconds, 10);
+                    else if (typeof object.seconds === "number")
+                        message.seconds = object.seconds;
+                    else if (typeof object.seconds === "object")
+                        message.seconds = new $util.LongBits(object.seconds.low >>> 0, object.seconds.high >>> 0).toNumber();
+                if (object.nanos != null)
+                    message.nanos = object.nanos | 0;
+                return message;
+            }
+            /* eslint-enable no-undef */
+
+            return this.fromObject(object);
+        }
+
+        var millis = Date.parse(object);
+        if (isNaN(millis))
+            return this.fromObject(object);
+
+        return this.create({
+            seconds: Math.floor(millis / 1000),
+            nanos: millis % 1000 * 1000000
+        });
+    },
+
+    toObject: function toObject(message, options) {
+        if (options && options.json)
+            return new Date(message.seconds * 1000 + message.nanos / 1000000).toISOString();
+
+        /* eslint-disable no-undef */
+        if ($root) {
+            if (!options)
+                options = {};
+            var object = {};
+            if (options.defaults) {
+                if ($util.Long) {
+                    var zero = new $util.Long(0, 0, false);
+                    object.seconds = options.longs === String ? zero.toString() : options.longs === Number ? zero.toNumber() : zero;
+                } else
+                    object.seconds = options.longs === String ? "0" : 0;
+                object.nanos = 0;
+            }
+            if (message.seconds != null && Object.prototype.hasOwnProperty.call(message, "seconds"))
+                if (typeof message.seconds === "number")
+                    object.seconds = options.longs === String ? String(message.seconds) : message.seconds;
+                else
+                    object.seconds = options.longs === String
+                        ? $util.Long.prototype.toString.call(message.seconds)
+                        : options.longs === Number
+                        ? new $util.LongBits(message.seconds.low >>> 0, message.seconds.high >>> 0).toNumber()
+                        : message.seconds;
+            if (message.nanos != null && Object.prototype.hasOwnProperty.call(message, "nanos"))
+                object.nanos = message.nanos;
+            return object;
+        }
+        /* eslint-enable no-undef */
 
         return this.toObject(message, options);
     }

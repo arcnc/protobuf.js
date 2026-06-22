@@ -596,11 +596,11 @@ function parse(source, root, options) {
 
                 var value;
                 var propName = token;
-                if (peek() === "{")
+                if (peek() === "{" || peek() === "[")
                     value = parseOptionValue(parent, name + "." + token);
                 else {
                     skip(":");
-                    if (peek() === "{")
+                    if (peek() === "{" || peek() === "[")
                         value = parseOptionValue(parent, name + "." + token);
                     else {
                         value = readValue(true);
@@ -614,6 +614,22 @@ function parse(source, root, options) {
                 skip(",", true);
             }
             return result;
+        } else if (skip("[", true)) { // { a: [ "foo", "bar" ] }
+            var values = [];
+            var index = 0;
+            while (!skip("]", true)) {
+                var arrayValue;
+                if (peek() === "{" || peek() === "[")
+                    arrayValue = parseOptionValue(parent, name + "[" + index + "]");
+                else {
+                    arrayValue = readValue(true);
+                    setOption(parent, name + "[" + index + "]", arrayValue);
+                }
+                values.push(arrayValue);
+                skip(",", true);
+                ++index;
+            }
+            return values;
         }
 
         var simpleValue = readValue(true);

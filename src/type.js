@@ -227,6 +227,7 @@ function clearCache(type) {
  * @property {number[][]} [extensions] Extension ranges
  * @property {number[][]} [reserved] Reserved ranges
  * @property {boolean} [group=false] Whether a legacy group or not
+ * @property {string} [filename] Defining file name
  */
 
 /**
@@ -239,6 +240,7 @@ Type.fromJSON = function fromJSON(name, json) {
     var type = new Type(name, json.options);
     type.extensions = json.extensions;
     type.reserved = json.reserved;
+    type.filename = json.filename || null;
     var names = Object.keys(json.fields),
         i = 0;
     for (; i < names.length; ++i)
@@ -285,6 +287,7 @@ Type.prototype.toJSON = function toJSON(toJSONOptions) {
     var inherited = Namespace.prototype.toJSON.call(this, toJSONOptions);
     var keepComments = toJSONOptions ? Boolean(toJSONOptions.keepComments) : false;
     return util.toObject([
+        "filename"   , this.filename || undefined,
         "options"    , inherited && inherited.options || undefined,
         "oneofs"     , Namespace.arrayToJSON(this.oneofsArray, toJSONOptions),
         "fields"     , Namespace.arrayToJSON(this.fieldsArray.filter(function(obj) { return !obj.declaringField; }), toJSONOptions) || {},

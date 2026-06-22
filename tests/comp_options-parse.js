@@ -32,6 +32,15 @@ tape.test("Options", function (test) {
         test.equal(TestFieldOptionsMsg.fields.field2.options["(fo_single_msg).value"], 7, "should correctly parse single msg option");
         test.equal(TestFieldOptionsMsg.fields.field2.options["(fo_single_msg).rep_value"], 9, "should take second repeated int in single msg option");
         test.same(TestFieldOptionsMsg.fields.field2.parsedOptions, [{"(fo_single_msg)": {value: 7, rep_value: [8,9]}}], "should take all repeated message option");
+
+        test.equal(TestFieldOptionsMsg.fields.field3.options["(fo_single_msg).rep_value[0]"], 10, "should parse option array scalar values");
+        test.equal(TestFieldOptionsMsg.fields.field3.options["(fo_single_msg).rep_nested[1].value"], "arr2", "should parse option array message values");
+        test.same(TestFieldOptionsMsg.fields.field3.parsedOptions, [{
+            "(fo_single_msg)": {
+                rep_value: [10, 11],
+                rep_nested: [{value: "arr1"}, {value: "arr2"}]
+            }
+        }], "should preserve bracketed arrays in parsed options");
         test.end();
     });
 
@@ -114,6 +123,23 @@ tape.test("Options", function (test) {
                 }
             }
         ], "should correctly parse all nested message options");
+        test.end();
+    });
+
+    test.test(test.name + " - message options (Array)", function(test) {
+        var TestMessageOptionsArray = root.lookup("TestMessageOptionsArray");
+
+        test.equal(TestMessageOptionsArray.options["(mo_array_msg).rep_value[0]"], 10, "should parse first repeated scalar value in array form");
+        test.equal(TestMessageOptionsArray.options["(mo_array_msg).rep_value[1]"], 11, "should parse second repeated scalar value in array form");
+        test.equal(TestMessageOptionsArray.options["(mo_array_msg).rep_nested[0].value"], "x", "should parse first repeated message value in array form");
+        test.equal(TestMessageOptionsArray.options["(mo_array_msg).rep_nested[1].value"], "y", "should parse second repeated message value in array form");
+        test.equal(TestMessageOptionsArray.toJSON().filename, "tests/data/options_test.proto", "should include defining filename in message JSON");
+        test.same(TestMessageOptionsArray.parsedOptions, [{
+            "(mo_array_msg)": {
+                rep_value: [10, 11],
+                rep_nested: [{ value: "x" }, { value: "y" }]
+            }
+        }], "should preserve option arrays in parsed options");
         test.end();
     });
 
